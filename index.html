@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="description" content="Charlottesville permit mapping app, ArcGIS JS v4">
+ 
+  <title>Find Nearby Permits - Cville</title>
+
+  <!-- Calcite Maps Bootstrap -->
+  <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-bootstrap.min-v0.8.css">
+  
+  <!-- Calcite Maps -->
+  <link rel="stylesheet" href="https://esri.github.io/calcite-maps/dist/css/calcite-maps-arcgis-4.x.min-v0.8.css">
+
+  <!-- ArcGIS JS 4 -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+
+</head>
+
+<body class="calcite-maps calcite-nav-top">
+  <!-- Navbar -->
+
+  <nav class="navbar calcite-navbar navbar-fixed-top calcite-text-light calcite-bg-dark">
+    <!-- Menu -->
+    <div class="dropdown calcite-dropdown calcite-text-dark calcite-bg-light" role="presentation">
+      <a class="dropdown-toggle" role="menubutton" aria-haspopup="true" aria-expanded="false" tabindex="0">
+        <div class="calcite-dropdown-toggle">
+          <span class="sr-only">Toggle dropdown menu</span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </a>
+      <ul class="dropdown-menu" role="menu">
+        <li><a role="menuitem" tabindex="0" data-target="#panelInfo" aria-haspopup="true"><span class="esri-icon esri-icon-settings"></span> Instructions and Settings</a></li>
+        <li><a role="menuitem" tabindex="0" href="#" data-target="#panelLegend" aria-haspopup="true"><span class="glyphicon glyphicon-list-alt"></span> Legend</a></li>
+        <li><a role="menuitem" tabindex="0" href="#" id="calciteToggleNavbar" aria-haspopup="true"><span class="glyphicon glyphicon-fullscreen"></span> Full Map</a></li>
+      </ul>
+    </div>
+    <!-- Title -->
+    <div class="calcite-title calcite-overflow-hidden">
+      <span class="calcite-title-main">Cville Permit Search</span>
+      <span class="calcite-title-divider hidden-xs"></span>
+      <span class="calcite-title-sub hidden-xs">Find permits near a location</span>
+    </div>
+    <!-- Nav -->
+    <ul class="nav navbar-nav calcite-nav">
+      <li>
+        <div class="calcite-navbar-search calcite-search-expander">
+          <div id="searchWidgetDiv"></div>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <!--/.calcite-navbar -->
+
+  <!-- Map  -->
+
+  <div class="calcite-map calcite-map-absolute">
+    <div id="mapViewDiv"></div>
+  </div>
+
+  <!-- /.calcite-map -->
+
+  <!-- Panels -->
+
+  <div class="calcite-panels calcite-panels-right calcite-text-light calcite-bg-dark panel-group">
+
+    <!-- Panel - Basemaps -->
+
+    <div id="panelInfo" class="panel collapse in">
+      <div id="headingInfo" class="panel-heading" role="tab">
+        <div class="panel-title">
+          <a class="panel-toggle" role="button" data-toggle="collapse" href="#collapseInfo"  aria-expanded="true" aria-controls="collapseInfo"><span class="esri-icon esri-icon-settings" aria-hidden="true"></span><span class="panel-label"> Instructions and Settings</span></a> 
+          <a class="panel-close" role="button" data-toggle="collapse" tabindex="0" href="#panelInfo"><span class="esri-icon esri-icon-close" aria-hidden="true"></span></a>  
+        </div>
+      </div>
+      <div id="collapseInfo" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingInfo">
+        <div class="panel-body">
+          Select permit type:
+          <select id="permit-type"></select>
+          <br><br> Since beginning of 
+          <input id="since" type="range" min="2000" max="2018" step="1" value="2017">&nbsp;
+          <span id="since-value">2017</span>          
+          <br><br> Buffer distance:
+          <input id="distance" type="range" min="10" max="1000" step="10" value="200">&nbsp;
+          <span id="distance-value">200</span> feet
+          <br><br><button id="query-permits" style="color: black">Query Permits</button>
+          <br>
+          <div id="results"></div>
+        </div>
+     </div>
+    </div>
+
+    <!-- Panel - Legend -->
+
+    <div id="panelLegend" class="panel collapse">
+      <div id="headingLegend" class="panel-heading" role="tab">
+        <div class="panel-title">
+          <a class="panel-toggle" role="button" data-toggle="collapse" href="#collapseLegend" aria-expanded="false" aria-controls="collapseLegend"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span><span class="panel-label">Legend</span></a> 
+          <a class="panel-close" role="button" data-toggle="collapse" tabindex="0" href="#panelLegend"><span class="esri-icon esri-icon-close" aria-hidden="true"></span></a> 
+        </div>
+      </div>
+      <div id="collapseLegend" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingLegend">
+        <div class="panel-body">            
+          <div id="legendDiv"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- /.calcite-panels -->
+
+  <script type="text/javascript">
+    var dojoConfig = {
+      packages: [{
+        name: "bootstrap",
+        location: "https://esri.github.io/calcite-maps/dist/vendor/dojo-bootstrap"
+      },
+      {
+        name: "calcite-maps",
+        location: "https://esri.github.io/calcite-maps/dist/js/dojo"
+      }]
+    };
+  </script>
+
+  <!-- ArcGIS JS 4 -->
+  <script src="https://js.arcgis.com/4.9/"></script>
+
+  <script>
+    
+    require([
+      // ArcGIS
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/geometry/geometryEngine",
+      "esri/Graphic",
+
+      // Widgets
+      "esri/widgets/Home",
+      "esri/widgets/Zoom",
+      "esri/widgets/Compass",
+      "esri/widgets/Search",
+      "esri/widgets/Legend",
+      "esri/widgets/BasemapToggle",
+      "esri/widgets/ScaleBar",
+      "esri/widgets/Attribution",
+
+      // Bootstrap
+      "bootstrap/Collapse",
+      "bootstrap/Dropdown",
+
+      // Calcite Maps
+      "calcite-maps/calcitemaps-v0.9",
+      // Calcite Maps ArcGIS Support
+      "calcite-maps/calcitemaps-arcgis-support-v0.9",
+
+      "dojo/domReady!"
+    ], function(Map, MapView, FeatureLayer, GraphicsLayer, geometryEngine, Graphic, Home, Zoom, Compass, Search, Legend, BasemapToggle, ScaleBar, Attribution,Collapse, Dropdown, CalciteMaps, CalciteMapArcGISSupport) {
+
+
+      var addressBuffer;
+      var permitTypeSelect = document.getElementById("permit-type");
+      var sinceSlider = document.getElementById("since");
+      var distanceSlider = document.getElementById("distance");
+      var queryPermitsButton = document.getElementById("query-permits");
+       
+      // permits layer
+      var permitsUrl =
+          "https://gisweb.charlottesville.org/arcgis/rest/services/OpenData_1/MapServer/73";
+      var permitsLayer = new FeatureLayer({
+        url: permitsUrl,
+        outFields: ["*"],
+        visible: false
+      });
+
+      var template = {
+        title: "PERMIT#  {PermitNumber}",
+        content: [{
+          type: "fields",
+          fieldInfos: [{
+            fieldName: "IssuedDate",
+            label: "Issued",
+            visible: true,
+            format: {
+              dateFormat: "short-date"
+            }
+          }, {
+            fieldName: "PropertyAddress",
+            label: "Property Address",
+            visible: true
+          },{
+            fieldName: "Status",
+            label: "Status",
+            visible: true
+          },{
+            fieldName: "Type",
+            label: "Type",
+            visible: true
+          },{
+            fieldName: "Valuation",
+            label: "Valuation",
+            visible: true,
+            format: {
+              places: 0,
+              digitSeparator: true
+            }
+          },{
+            fieldName: "WorkDescription ",
+            label: "Work Description ",
+            visible: true
+          }]
+        }]
+      };
+
+      permitsLayer.popupTemplate = template;
+
+      // GraphicsLayer for displaying results
+      var resultsLayer = new GraphicsLayer();
+
+      // Map
+      var map = new Map({
+        basemap: "gray-vector",
+        layers: [ permitsLayer, resultsLayer]
+      });
+      
+      // View
+      var mapView = new MapView({
+        container: "mapViewDiv",
+        map: map,
+        center: [-78.482195, 38.037042],
+        zoom: 13,
+        constraints: {
+          snapToZoom: false,
+          maxZoom: 18,
+          minZoom: 12 
+        },
+        padding: {
+          top: 50,
+          bottom: 0
+        },
+        ui: {components: []}
+      });
+
+      // Popup and panel sync
+      mapView.when(function(){
+        CalciteMapArcGISSupport.setPopupPanelSync(mapView);
+      });
+
+      // Search - add to navbar
+      var searchWidget = new Search({
+        //container: "searchWidgetDiv",
+        view: mapView,
+        popupEnabled: false
+      });
+
+      searchWidget.on("select-result", function(event){
+
+        createBuffer( event.result.feature.geometry );
+
+        queryPermits()
+        .then(displayResults);                  
+  
+      });
+
+      //CalciteMapArcGISSupport.setSearchExpandEvents(searchWidget);
+
+      // Map widgets
+      mapView.ui.add(searchWidget, "top-left");
+
+      var home = new Home({
+        view: mapView
+      });
+      mapView.ui.add(home, "top-left");
+
+      var zoom = new Zoom({
+        view: mapView
+      });
+      mapView.ui.add(zoom, "top-left");
+
+      var compass = new Compass({
+        view: mapView
+      });
+      mapView.ui.add(compass, "top-left");
+      
+      var basemapToggle = new BasemapToggle({
+        view: mapView,
+        secondBasemap: "satellite"
+      });
+      mapView.ui.add(basemapToggle, "bottom-right");          
+      
+      var scaleBar = new ScaleBar({
+        view: mapView
+      });
+      mapView.ui.add(scaleBar, "bottom-left");
+
+      var attribution = new Attribution({
+        view: mapView
+      });
+      mapView.ui.add(attribution, "manual");
+
+
+      // TODO - add legend
+      // var legendWidget = new Legend({
+      //   container: "legendDiv",
+      //   view: mapView
+      // });
+
+      // display the distance value selected by the user
+        distanceSlider.addEventListener("input", function () {
+        document.getElementById("distance-value").innerText = distanceSlider.value;
+      });
+
+      // display the since value selected by the user
+      sinceSlider.addEventListener("input", function () {
+        document.getElementById("since-value").innerText = sinceSlider.value;
+      });
+
+      // Query the permits layer when this button is clicked
+      queryPermitsButton.addEventListener("click", function () {
+
+          createBuffer(mapView.center);
+
+          queryPermits()
+          .then(displayResults);
+      });
+
+      // FUNCTIONS
+
+      function queryPermits() {
+        var query = permitsLayer.createQuery();
+        if (permitTypeSelect.value == '--ALL TYPES--') {
+          query.where = "IssuedDate > '1-1-" + sinceSlider.value +"'";
+        } else {
+          query.where = "IssuedDate > '1-1-" + sinceSlider.value +"' AND Type = '" + permitTypeSelect.value + "'";
+        }
+        
+        query.geometry = addressBuffer;
+        query.spatialRelationship = "intersects";
+
+        return permitsLayer.queryFeatures(query);
+      }
+
+      // display the query results in the
+      // view and print the number of results to the DOM
+      function displayResults(results) {
+
+        resultsLayer.removeAll();
+        var features = results.features.map(function (graphic) {
+          graphic.symbol = {
+              type: "simple-fill",  // autocasts as new SimpleFillSymbol()
+              color: [ 51, 51, 204, 0.15 ],
+              style: "solid",
+              outline: {  // autocasts as new SimpleLineSymbol()
+                  color: "blue",
+                  width: 1
+              }
+          };
+          return graphic;
+        });
+        var numPermits = features.length;
+        document.getElementById("results").innerHTML = numPermits + " permits found";
+        resultsLayer.addMany(features);
+      }
+
+      // creates a single buffer polygon around
+      // the address
+      function createBuffer(point) {
+        var bufferDistance = parseInt(distanceSlider.value);
+        var addressBuffers = geometryEngine.geodesicBuffer([point], [bufferDistance], "feet",
+          true);
+          addressBuffer = addressBuffers[0];
+
+        // add the buffer to the view as a graphic
+        var bufferGraphic = new Graphic({
+          geometry: addressBuffer,
+          symbol: {
+            type: "simple-fill", // autocasts as new SimpleFillSymbol()
+            outline: {
+              width: 1.5,
+              color: [255, 128, 0, 0.5]
+            },
+            style: "none"
+          }
+        });
+        mapView.graphics.removeAll();
+        mapView.graphics.add(bufferGraphic);
+        mapView.goTo(bufferGraphic);
+      }
+
+      function addToSelect(values) {
+        values.sort();
+        values.forEach(function (value) {
+          var option = document.createElement("option");
+          option.text = value;
+          permitTypeSelect.add(option);
+        });
+      }
+
+      var permitTypes = ['--ALL TYPES--', 'SUBDIVISION','STORM WATER', 'COMPLAINT INSPECTION', 'STOP WORK ORDER', 'ELECTRICAL', 'E&S', 'BMP', 'SPECIALUSE', 'VSMP - MAINTENANCE', 'PA E&S', 'BZA', 'FIRE SPRINKLER', 'DEMOLITION', 'PLUMBING', 'CO (EXISTING DEVELOPMENT)', 'ELEVATOR PERMIT', 'SIGN', 'ERB', 'VSMP - REGISTRATION STATEMENTS', 'BUILDING', 'BAR', 'SITEPLAN', 'PRSITEPLAN', 'MECHANICAL'];
+
+      addToSelect(permitTypes);
+
+      permitTypeSelect.value='BUILDING';
+
+    });
+  </script>
+
+</body>
+</html>
