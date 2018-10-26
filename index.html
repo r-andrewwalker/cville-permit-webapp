@@ -46,7 +46,7 @@
       <ul class="dropdown-menu" role="menu">
         <li><a role="menuitem" tabindex="0" data-target="#panelInfo" aria-haspopup="true"><span class="esri-icon esri-icon-settings"></span> Instructions and Settings</a></li>
         <li><a role="menuitem" tabindex="0" href="#" data-target="#panelLegend" aria-haspopup="true"><span class="glyphicon glyphicon-list-alt"></span> Legend</a></li>
-        <li><a role="menuitem" tabindex="0" href="#" id="calciteToggleNavbar" aria-haspopup="true"><span class="glyphicon glyphicon-fullscreen"></span> Full Map</a></li>
+        <li><a role="menuitem" tabindex="0" href="#" id="calciteToggleNavbar" aria-haspopup="true"><span class="glyphicon glyphicon-fullscreen"></span> Fullscreen</a></li>
       </ul>
     </div>
     <!-- Title -->
@@ -90,7 +90,7 @@
       </div>
       <div id="collapseInfo" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingInfo">
         <div class="panel-body">
-            Use the address search bar to find permits near a location. The Query Permits button below will perform a search using the center of the map.
+            Use the address search bar to find permits near a location. The Query Permits button below will perform a search using the center of the map. The settings below will determine the search radius and types of permits displayed.
           <br><br> Select permit type:
           <select id="permit-type"></select>
           <br><br> Since beginning of 
@@ -192,12 +192,12 @@
       });
 
       var template = {
-        title: "PERMIT#  {PermitNumber}",
+        title: "<b>PERMIT#  {PermitNumber}</b>",
         content: [{
           type: "fields",
           fieldInfos: [{
             fieldName: "IssuedDate",
-            label: "Issued",
+            label: "Date Issued",
             visible: true,
             format: {
               dateFormat: "short-date"
@@ -212,11 +212,11 @@
             visible: true
           },{
             fieldName: "Type",
-            label: "Type",
+            label: "Permit Type",
             visible: true
           },{
             fieldName: "Valuation",
-            label: "Valuation",
+            label: "Valuation ($)",
             visible: true,
             format: {
               places: 0,
@@ -316,7 +316,6 @@
       });
       mapView.ui.add(attribution, "manual");
 
-
       // TODO - add legend
       // var legendWidget = new Legend({
       //   container: "legendDiv",
@@ -365,10 +364,10 @@
         resultsLayer.removeAll();
         var features = results.features.map(function (graphic) {
           graphic.symbol = {
-              type: "simple-fill",  // autocasts as new SimpleFillSymbol()
-              color: [ 51, 51, 204, 0.15 ],
+              type: "simple-fill",  
+              color: [ 51, 51, 204, 0.10 ],
               style: "solid",
-              outline: {  // autocasts as new SimpleLineSymbol()
+              outline: {  
                   color: "blue",
                   width: 1
               }
@@ -380,8 +379,7 @@
         resultsLayer.addMany(features);
       }
 
-      // creates a single buffer polygon around
-      // the address
+      // create a buffer polygon around the address
       function createBuffer(point) {
         var bufferDistance = parseInt(distanceSlider.value);
         var addressBuffers = geometryEngine.geodesicBuffer([point], [bufferDistance], "feet",
@@ -392,7 +390,7 @@
         var bufferGraphic = new Graphic({
           geometry: addressBuffer,
           symbol: {
-            type: "simple-fill", // autocasts as new SimpleFillSymbol()
+            type: "simple-fill", 
             outline: {
               width: 1.5,
               color: [255, 128, 0, 0.5]
